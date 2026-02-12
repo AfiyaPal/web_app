@@ -1,16 +1,138 @@
 {% extends "base.html" %}
 
-{% block title %}Coming Soon | AfiyaPal{% endblock %}
+{% block title %}AfiyaPal{% endblock %}
 
 {% block content %}
-<section class="text-center" data-aos="fade-up">
-    <h1 class="display-4 text-primary fw-bold mb-3">Coming Soon</h1>
-    <p class="lead text-muted">We're working hard to bring you something amazing at <strong>AfiyaPal</strong>.</p>
-    <p class="text-secondary">Stay tuned for health tools, blogs, and AI-powered wellness assistants.</p>
-    
-    <div class="mt-4">
-        <a href="#" class="btn btn-primary me-2">Notify Me</a>
-        <a href="#" class="btn btn-outline-secondary">Learn More</a>
+
+  <!-- Hero -->
+<section class="hero-slider">
+  <div class="slides">
+    <!-- Slide 1 -->
+    <div class="slide active">
+      <div class="slide-content">
+        <h1>AfiyaPal — your fast, AI-powered symptom guide</h1>
+        <p>Describe how you feel, get probable conditions and the best next steps. Not a diagnosis — but a smart place to start.</p>
+        <a href="symptomschecker.html" class="btn">Start the Symptom Checker</a>
+      </div>
+      <div class="slide-image">
+        <img src="static/img/hero/Symptom-Checker.jpg" alt="Symptom Guide Illustration">
+      </div>
     </div>
+
+    <!-- Slide 2 -->
+    <div class="slide">
+      <div class="slide-content">
+        <h1>Health Education</h1>
+        <p>Reliable, evidence-based information and blogs at your fingertips. Stay informed, stay healthy.</p>
+        <a href="education.html" class="btn">Learn about health</a>
+      </div>
+      <div class="slide-image">
+        <img src="static/img/hero/health education.png" alt="Trusted Health">
+      </div>
+    </div>
+
+  </div>
+
 </section>
+
+<!-- Features -->
+<section class="chooseus spad">
+  <div class="container">
+    <div class="row">
+      <div class="section-title">
+        <span>Why AfiyaPal?</span>
+        <h2>Your Trusted Health Companion</h2>
+      </div>
+    </div>
+    <div class="row">
+      <div class="chooseus__item">
+        <img src="static/img/ci-1.png" alt="24/7 Availability Icon" />
+        <h5>Always Available</h5>
+        <p>
+          Access health guidance anytime, anywhere. AfiyaPal is here 24/7 to answer your questions and provide support
+          when you need it most.
+        </p>
+      </div>
+      
+      <div class="chooseus__item">
+        <img src="static/img/ci-2.png" alt="Personalized Advice Icon" />
+        <h5>Personalized Guidance</h5>
+        <p>
+          Get tailored health tips and advice based on your needs. AfiyaPal understands your concerns and offers
+          relevant, easy-to-follow suggestions.
+        </p>
+      </div>
+      
+      <div class="chooseus__item">
+        <img src="static/img/ci-3.png" alt="Reliable Information Icon" />
+        <h5>Trusted Information</h5>
+        <p>
+          Rely on accurate, evidence-based health insights. AfiyaPal delivers clear and trustworthy information to
+          help you make informed decisions.
+        </p>
+      </div>
+      
+        <div class="chooseus__item">
+          <img src="static/img/ci-4.png" alt="User-Friendly Icon" />
+          <h5>Easy to Use</h5>
+          <p>
+            Enjoy a seamless and intuitive experience. AfiyaPal’s friendly interface makes it simple to get answers and
+            stay on top of your health.
+          </p>
+        </div>
+    </div>
+  </div>
+</section>
+
+<!-- Blog Snippet -->
+<section class="home-blogs container">
+  <h2>Top articles and blogs</h2>
+  <div class="blog-grid">
+    <article class="blog-card">
+      <img src="static/img/blogs/Healthy-Eating.jpg" alt="Healthy Eating">
+      <h3>10 Simple Tips for a Balanced Diet</h3>
+      <p>Good nutrition doesn’t have to be complicated. Here’s how to eat smart, without overthinking it...</p>
+      <a href="#" class="btn1">Read More</a>
+    </article>
+
+    <article class="blog-card">
+      <img src="static/img/blogs/Sleep-Health.webp" alt="Sleep Health">
+      <h3>Why Quality Sleep Matters</h3>
+      <p>Lack of sleep affects your body more than you think. Discover the science of rest and recovery...</p>
+      <a href="#" class="btn1">Read More</a>
+    </article>
+
+    <article class="blog-card">
+      <img src="static/img/blogs/mental-health.jpg" alt="Mental Health">
+      <h3>Managing Stress in Daily Life</h3>
+      <p>Stress is unavoidable, but it doesn’t have to control you. Learn practical ways to cope and thrive...</p>
+      <a href="#" class="btn1">Read More</a>
+    </article>
+  </div>
+  <div class="see-all">
+    <a href="education.html" class="btn">See All Blogs</a>
+  </div>
+</section>
+
+<script>
+  let slides = document.querySelectorAll(".slide");
+let current = 0;
+
+function showNextSlide() {
+  let prev = slides[current];
+  prev.classList.remove("active");
+  prev.classList.add("exit");
+
+  current = (current + 1) % slides.length;
+  let next = slides[current];
+  next.classList.add("active");
+
+  // reset previous slide after animation
+  setTimeout(() => prev.classList.remove("exit"), 800);
+}
+
+setInterval(showNextSlide, 5000); // 5s per slide
+
+</script>
+
 {% endblock %}
