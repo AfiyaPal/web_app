@@ -1,18 +1,14 @@
+
 from django.http import JsonResponse
 from django.shortcuts import render
-from django.contrib.auth.decorators import login_required
+from django.views.decorators.clickjacking import xframe_options_exempt
 from decouple import config
-import requests
 import logging
 
 logger = logging.getLogger(__name__)
 
 def generate_ai_response(user_msg: str) -> str:
-    """Return AI response or a helpful error message.
-    This centralises Gemini usage so both views can call it and receive
-    consistent, user-friendly error text when the key is missing or the
-    API call fails.
-    """
+    """Return AI response or a helpful error message."""
     try:
         import google.generativeai as genai
         api_key = config('GEMINI_API_KEY', default=None)
@@ -21,7 +17,6 @@ def generate_ai_response(user_msg: str) -> str:
             return "AI unavailable: GEMINI_API_KEY is not configured on the server."
         
         genai.configure(api_key=api_key)
-
         model = genai.GenerativeModel('gemini-1.5-flash')
         system_prompt = ("You are Afiyapal, a compassionate AI health assistant for underserved "
                          "communities in Mombasa, Kenya. Focus on mental health, myth-busting, "
@@ -34,114 +29,72 @@ def generate_ai_response(user_msg: str) -> str:
         return "AI unavailable: The necessary libraries are not installed on the server."
     except Exception as e:
         logger.error(f"Gemini API error: {e}")
-        return "Sorry, I'm having trouble connecting right now. Please try again or consult a healthcare professional if it's urgent."
+        return "Sorry, I'm having trouble connecting right now. Please try again later."
 
 def home(request):
     """Home page view."""
-    context = {
-        "title": "Home",
-        "user": request.user,
-    }
-    return render(request, "frontend/index.html", context)
-
-from django.views.decorators.clickjacking import xframe_options_exempt
+    return render(request, "frontend/index.html", {"title": "Home", "user": request.user})
 
 @xframe_options_exempt
-
 def chatbot(request):
-    """
-    Simple chat interface rendering a standalone page.
-    Messages are kept in the session so a conversation can persist while the user
-    keeps the browser window open. The POST payload should contain a single
-    "message" field which is sent to Gemini; the AI response is appended to the
-    chat history immediately.
-    """
-    logger.info(f"chatbot called with method: {request.method}")
-    # get or initialise conversation history
-    # handle a manual clear request
+    """Handles chat page rendering and AJAX message posting."""
+    template = 'frontend/chatbot_frame.html' if request.GET.get('embedded') == '1' else 'frontend/chatbot.html'
+    
     if request.GET.get('clear') == '1':
-        messages = []
-        request.session['chat_messages'] = messages
+        request.session['chat_messages'] = []
         logger.info("Chat cleared")
 
-    messages = request.session.get('chat_messages', [])
-
-    if request.method == "POST":
+    if request.method == "POST" and request.headers.get('x-requested-with') == 'XMLHttpRequest':
         user_msg = request.POST.get("message", "").strip()
-        logger.info(f"POST received with message: '{user_msg}'")
-        if user_msg:
-            # add user message
-            messages.append({'sender': 'user', 'text': user_msg})
-            logger.info(f"User message appended. Total messages: {len(messages)}")
-            # use centralized helper for AI response (handles missing key and errors)
-            ai_resp = generate_ai_response(user_msg)
-            logger.info(f"AI response generated (chars): {len(ai_resp)}")
+        if not user_msg:
+            return JsonResponse({"error": "Empty message"}, status=400)
 
-            messages.append({'sender': 'ai', 'text': ai_resp})
-            request.session['chat_messages'] = messages
-            logger.info(f"AI response appended. Total messages now: {len(messages)}")
+        messages = request.session.get('chat_messages', [])
+        messages.append({'sender': 'user', 'text': user_msg})
+        
+        ai_resp = generate_ai_response(user_msg)
+        messages.append({'sender': 'ai', 'text': ai_resp})
+        
+        request.session['chat_messages'] = messages
+        return JsonResponse({"text": ai_resp})
 
-    template = 'frontend/chatbot_frame.html' if request.GET.get('embedded') == '1' else 'frontend/chatbot.html'
     return render(request, template, {
-        'messages': messages,
+        'messages': request.session.get('chat_messages', []),
     })
-
 
 @xframe_options_exempt
 def chatbot_frame(request):
-    """
-    Dedicated view for iframe embedding. Always renders the minimal frame template.
-    Handles chat message persistence and AI responses, same as chatbot() but guaranteed
-    to return no header/footer/nav.
-    """
-    logger.info(f"chatbot_frame called with method: {request.method}")
-    # handle a manual clear request
+    """Dedicated view for iframe embedding. Handles chat logic via AJAX."""
     if request.GET.get('clear') == '1':
-        messages = []
-        request.session['chat_messages'] = messages
+        request.session['chat_messages'] = []
         logger.info("Chat cleared")
+        # No need to return anything special, will just render template with empty messages
 
-    messages = request.session.get('chat_messages', [])
-
-    if request.method == "POST":
+    if request.method == "POST" and request.headers.get('x-requested-with') == 'XMLHttpRequest':
         user_msg = request.POST.get("message", "").strip()
-        logger.info(f"POST received with message: '{user_msg}'")
-        if user_msg:
-            # add user message
-            messages.append({'sender': 'user', 'text': user_msg})
-            logger.info(f"User message appended. Total messages: {len(messages)}")
-            # use centralized helper for AI response (handles missing key and errors)
-            ai_resp = generate_ai_response(user_msg)
-            logger.info(f"AI response generated (chars): {len(ai_resp)}")
+        if not user_msg:
+            return JsonResponse({"error": "Empty message"}, status=400)
 
-            messages.append({'sender': 'ai', 'text': ai_resp})
-            request.session['chat_messages'] = messages
-            logger.info(f"AI response appended. Total messages now: {len(messages)}")
+        messages = request.session.get('chat_messages', [])
+        messages.append({'sender': 'user', 'text': user_msg})
 
-    # Always use frame template (no header/footer/nav)
+        ai_resp = generate_ai_response(user_msg)
+        messages.append({'sender': 'ai', 'text': ai_resp})
+
+        request.session['chat_messages'] = messages
+        return JsonResponse({"sender": "ai", "text": ai_resp})
+
+    # For initial GET request, just render the frame.
     return render(request, 'frontend/chatbot_frame.html', {
-        'messages': messages,
+        'messages': request.session.get('chat_messages', []),
     })
-
 
 def gemini_test(request):
-    """Simple diagnostic view to verify Gemini availability and a sample response.
-    Returns JSON: { available: bool, sample: str }
-    """
-    sample = None
-    available = False
+    """Simple diagnostic view for Gemini."""
     try:
         sample = generate_ai_response('Say hello in one short sentence.')
-        is_unavailable = "AI unavailable" in sample
-        is_error = "Sorry, I'm having trouble" in sample
-        available = not (is_unavailable or is_error)
-
+        available = "AI unavailable" not in sample and "Sorry" not in sample
+        return JsonResponse({'available': available, 'sample': sample})
     except Exception as e:
         logger.error(f"gemini_test exception: {e}")
-        sample = f"error: {e}"
-        available = False
-
-    return JsonResponse({
-        'available': available,
-        'sample': sample,
-    })
+        return JsonResponse({'available': False, 'sample': f"error: {e}"}, status=500)

@@ -253,7 +253,7 @@
                 </div>
             {% endif %}
         </div>
-        <form id="chat-form" method="post">
+        <form id="chat-form" method="post" action="{% url 'frontend:chatbot_frame' %}">
             {% csrf_token %}
             <input type="text" name="message" placeholder="Describe your symptoms..." required autocomplete="off" />
             <button type="submit" id="send-btn">Send</button>
@@ -261,93 +261,123 @@
     </div>
 
     <script>
-    console.log('Chat frame script loaded');
-    
-    // Auto-scroll to bottom when messages load
     const chatMessages = document.getElementById('chat-messages');
-    function scrollToBottom() {
-        if (chatMessages) {
-            chatMessages.scrollTop = chatMessages.scrollHeight;
-        }
-    }
-    scrollToBottom();
-    
-    // Prevent duplicate submissions
     const form = document.getElementById('chat-form');
     const sendBtn = document.getElementById('send-btn');
     const inputField = document.querySelector('#chat-form input[name="message"]');
-    let isSubmitting = false;
-    
-    console.log('Form elements:', {form, sendBtn, inputField});
-    
-    form.addEventListener('submit', function(e) {
-        console.log('Form submit event fired');
-        console.log('isSubmitting?', isSubmitting);
-        
-        if (isSubmitting) {
-            console.log('Already submitting, preventing duplicate');
-            e.preventDefault();
-            return;
-        }
-        
-        const userMsg = inputField.value.trim();
-        console.log('User message:', userMsg);
-        
-        if (!userMsg) {
-            console.log('Empty message, preventing submission');
-            e.preventDefault();
-            return;
-        }
-        
-        isSubmitting = true;
-        sendBtn.disabled = true;
-        sendBtn.textContent = 'Sending...';
-        console.log('Message being sent:', userMsg);
-        
-        // Show user message immediately
-        const userMessageDiv = document.createElement('div');
-        userMessageDiv.className = 'message user';
-        userMessageDiv.innerHTML = '<div class="message-bubble">' + escapeHtml(userMsg) + '</div>';
-        chatMessages.appendChild(userMessageDiv);
-        
-        // Show typing indicator
-        const typingDiv = document.createElement('div');
-        typingDiv.className = 'message ai';
-        typingDiv.innerHTML = '<div class="typing-indicator"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>';
-        chatMessages.appendChild(typingDiv);
-        
-        scrollToBottom();
-        inputField.value = '';
-        
-        // Remove empty state if it exists
-        const emptyState = chatMessages.querySelector('.empty-state');
-        if (emptyState) {
-            emptyState.remove();
-        }
-        
-        // Let form submit normally - don't preventDefault
-        console.log('Form will now submit to server');
-        // Form will post to server and page will reload with new messages
-    });
-    
-    // Enter key to send
-    inputField.addEventListener('keypress', function(e) {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            console.log('Enter key pressed');
-            e.preventDefault();
-            if (!isSubmitting && inputField.value.trim()) {
-                console.log('Submitting form via Enter key');
-                form.submit();
-            }
-        }
-    });
-    
-    // Helper to escape HTML
+    const csrfToken = document.querySelector('input[name="csrfmiddlewaretoken"]').value;
+
+    function scrollToBottom() {
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
     function escapeHtml(text) {
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
     }
-    </script>
+
+    function addMessage(sender, text) {
+        // Remove typing indicator before adding new message
+        const typingIndicator = chatMessages.querySelector('.typing-indicator-wrapper');
+        if (typingIndicator) {
+            typingIndicator.remove();
+        }
+
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `message ${sender}`;
+        
+        // Use markdown-it to render Markdown
+        const md = window.markdownit();
+        const renderedHtml = md.render(text);
+        
+        messageDiv.innerHTML = `<div class="message-bubble">${renderedHtml}</div>`;
+        chatMessages.appendChild(messageDiv);
+        scrollToBottom();
+    }
+
+    // Auto-scroll to bottom on page load
+    scrollToBottom();
+
+    form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const userMsg = inputField.value.trim();
+        if (!userMsg) return;
+
+        // Disable form
+        sendBtn.disabled = true;
+        sendBtn.textContent = 'Sending...';
+        inputField.disabled = true;
+
+        // Add user message to UI
+        addMessage('user', userMsg);
+        inputField.value = '';
+
+        // Remove empty state if present
+        const emptyState = chatMessages.querySelector('.empty-state');
+        if (emptyState) emptyState.remove();
+
+        // Show typing indicator
+        const typingDiv = document.createElement('div');
+        typingDiv.className = 'message ai typing-indicator-wrapper'; // Add a wrapper class
+        typingDiv.innerHTML = '<div class="typing-indicator"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>';
+        chatMessages.appendChild(typingDiv);
+        scrollToBottom();
+
+        try {
+            const response = await fetch(form.action, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': csrfToken,
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-Requested-With': 'XMLHttpRequest' // To identify AJAX requests in Django
+                },
+                body: `message=${encodeURIComponent(userMsg)}`
+            });
+
+            if (!response.ok) {
+                 const errorText = await response.text();
+                 let errorMessage = `HTTP error! Status: ${response.status}`;
+                 try {
+                     const errorJson = JSON.parse(errorText);
+                     errorMessage = errorJson.error || errorMessage;
+                 } catch (e) {
+                     // Not a JSON response, use the plain text.
+                     errorMessage = errorText;
+                 }
+                 throw new Error(errorMessage);
+            }
+            
+            const responseData = await response.json();
+
+            // Replace typing indicator with AI response
+            const typingIndicator = chatMessages.querySelector('.typing-indicator-wrapper');
+            if (typingIndicator) {
+                typingIndicator.remove();
+            }
+            addMessage('ai', responseData.text);
+
+
+        } catch (error) {
+            console.error('Fetch error:', error);
+            const errorText = error.message || 'Sorry, something went wrong. Please try again.';
+            addMessage('ai', errorText);
+        } finally {
+            // Re-enable form
+            sendBtn.disabled = false;
+            sendBtn.textContent = 'Send';
+            inputField.disabled = false;
+            
+            // Make sure typing indicator is removed
+            const typingIndicator = chatMessages.querySelector('.typing-indicator-wrapper');
+            if (typingIndicator) {
+                typingIndicator.remove();
+            }
+
+            inputField.focus();
+        }
+    });
+</script>
+<script src="https://cdn.jsdelivr.net/npm/markdown-it@14.1.0/dist/markdown-it.min.js"></script>
 </body>
 </html>
