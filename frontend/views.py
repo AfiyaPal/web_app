@@ -4,9 +4,48 @@ from django.contrib.auth.decorators import login_required
 from decouple import config
 import google.generativeai as genai
 import requests
+import logging
 
-# Configure Gemini API
-genai.configure(api_key=config('GEMINI_API_KEY'))
+logger = logging.getLogger(__name__)
+
+# Configure Gemini API and expose availability flag
+gemini_available = False
+try:
+    api_key = config('GEMINI_API_KEY', default=None)
+    if not api_key:
+        logger.warning("GEMINI_API_KEY not found in environment or .env file")
+        gemini_available = False
+    else:
+        genai.configure(api_key=api_key)
+        gemini_available = True
+        logger.info("Gemini API configured (key present)")
+except Exception as e:
+    gemini_available = False
+    logger.error(f"Failed to configure Gemini API: {e}")
+
+
+def generate_ai_response(user_msg: str) -> str:
+    """Return AI response or a helpful error message.
+
+    This centralises Gemini usage so both views can call it and receive
+    consistent, user-friendly error text when the key is missing or the
+    API call fails.
+    """
+    # Quick guard for missing key
+    if not gemini_available:
+        return "AI unavailable: GEMINI_API_KEY is not configured on the server."
+
+    try:
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        system_prompt = ("You are Afiyapal, a compassionate AI health assistant for underserved "
+                         "communities in Mombasa, Kenya. Focus on mental health, myth-busting, "
+                         "and first aid. Be concise and actionable.")
+        user_prompt = f"User: {user_msg}\n\nProvide a helpful, evidence-based response using your specialties above."
+        result = model.generate_content(system_prompt + "\n\n" + user_prompt)
+        return result.text.strip()
+    except Exception as e:
+        logger.error(f"Gemini API error: {e}")
+        return "Sorry, I'm having trouble connecting right now. Please try again or consult a healthcare professional if it's urgent."
 
 def home(request):
     """Home page view."""
@@ -16,80 +55,102 @@ def home(request):
     }
     return render(request, "frontend/index.html", context)
 
+from django.views.decorators.clickjacking import xframe_options_exempt
+
+@xframe_options_exempt
+
 def chatbot(request):
     """
-    Handle chatbot: symptom analysis and clinic search using Gemini with 5 clinics.
-    No database storage for clinics.
+    Simple chat interface rendering a standalone page.
+    Messages are kept in the session so a conversation can persist while the user
+    keeps the browser window open. The POST payload should contain a single
+    "message" field which is sent to Gemini; the AI response is appended to the
+    chat history immediately.
     """
-    response = ""  # Symptom response
-    clinic_response = None  # Clinic search feedback
-    clinics = []  # List of clinics
+    logger.info(f"chatbot called with method: {request.method}")
+    # get or initialise conversation history
+    # handle a manual clear request
+    if request.GET.get('clear') == '1':
+        messages = []
+        request.session['chat_messages'] = messages
+        logger.info("Chat cleared")
+
+    messages = request.session.get('chat_messages', [])
 
     if request.method == "POST":
-        # Symptom form handling
-        symptoms = request.POST.get("symptoms", "").strip()
-        lang = request.POST.get("language", "en")
-        if symptoms:
-            try:
-                model = genai.GenerativeModel('gemini-1.5-flash')
-                prompt = f"""
-                You are a health assistant for underserved communities in Mombasa.
-                Language: {'Swahili' if lang == 'sw' else 'English'}.
-                User symptoms: {symptoms}.
-                Suggest a possible condition (disclaimer: not a diagnosis) and recommend visiting a clinic.
-                Keep response concise, friendly, and culturally sensitive, under 100 words.
-                """
-                result = model.generate_content(prompt)
-                response = result.text.strip()
-            except Exception as e:
-                response = f"Error: Could not connect to AI. Try example: 'I have a fever' -> Possible flu, visit a clinic."
+        user_msg = request.POST.get("message", "").strip()
+        logger.info(f"POST received with message: '{user_msg}'")
+        if user_msg:
+            # add user message
+            messages.append({'sender': 'user', 'text': user_msg})
+            logger.info(f"User message appended. Total messages: {len(messages)}")
+            # use centralized helper for AI response (handles missing key and errors)
+            ai_resp = generate_ai_response(user_msg)
+            logger.info(f"AI response generated (chars): {len(ai_resp)}")
 
-        # Clinic search handling
-        city = request.POST.get("city", "").strip()
-        if city:
-            try:
-                model = genai.GenerativeModel('gemini-1.5-flash')
-                clinic_prompt = f"""
-                You are a health assistant for underserved communities in Kenya.
-                Language: {'Swahili' if lang == 'sw' else 'English'}.
-                User request: Find health centers or hospitals in {city}.
-                Provide exactly 5 health centers or hospitals in or near {city}.
-                Format as JSON:
-                [
-                    {{"name": "name1", "address": "address1"}},
-                    {{"name": "name2", "address": "address2"}},
-                    {{"name": "name3", "address": "address3"}},
-                    {{"name": "name4", "address": "address4"}},
-                    {{"name": "name5", "address": "address5"}}
-                ]
-                If fewer than 5, return only those found. If none, return empty list.
-                Be concise, accurate, and focus on healthcare facilities.
-                """
-                result = model.generate_content(clinic_prompt)
-                clinic_response = result.text.strip()
+            messages.append({'sender': 'ai', 'text': ai_resp})
+            request.session['chat_messages'] = messages
+            logger.info(f"AI response appended. Total messages now: {len(messages)}")
 
-                # Parse Gemini response (expecting JSON)
-                import json
-                try:
-                    # Clean up markdown code blocks if present
-                    cleaned_response = clinic_response.replace('```json', '').replace('```', '').strip()
-                    clinics = json.loads(cleaned_response)
-                    if clinics:
-                        clinic_response = f"Found {len(clinics)} health centers in {city}."
-                    else:
-                        clinic_response = f"No health centers found in {city}. Try another location."
-                except json.JSONDecodeError:
-                    clinic_response = f"Error: Invalid response format from AI for {city}."
-                    clinics = []
-            except Exception as e:
-                clinic_response = f"Error: Could not fetch health centers for {city}. Please try again."
-                clinics = []
-
-    return render(request, 'frontend/chatbot.html', {
-        'response': response,
-        'clinic_response': clinic_response,
-        'clinics': clinics,
+    template = 'frontend/chatbot_frame.html' if request.GET.get('embedded') == '1' else 'frontend/chatbot.html'
+    return render(request, template, {
+        'messages': messages,
     })
 
     """Health news page."""
     return render(request, "frontend/health_news.html")
+
+
+@xframe_options_exempt
+def chatbot_frame(request):
+    """
+    Dedicated view for iframe embedding. Always renders the minimal frame template.
+    Handles chat message persistence and AI responses, same as chatbot() but guaranteed
+    to return no header/footer/nav.
+    """
+    logger.info(f"chatbot_frame called with method: {request.method}")
+    # handle a manual clear request
+    if request.GET.get('clear') == '1':
+        messages = []
+        request.session['chat_messages'] = messages
+        logger.info("Chat cleared")
+
+    messages = request.session.get('chat_messages', [])
+
+    if request.method == "POST":
+        user_msg = request.POST.get("message", "").strip()
+        logger.info(f"POST received with message: '{user_msg}'")
+        if user_msg:
+            # add user message
+            messages.append({'sender': 'user', 'text': user_msg})
+            logger.info(f"User message appended. Total messages: {len(messages)}")
+            # use centralized helper for AI response (handles missing key and errors)
+            ai_resp = generate_ai_response(user_msg)
+            logger.info(f"AI response generated (chars): {len(ai_resp)}")
+
+            messages.append({'sender': 'ai', 'text': ai_resp})
+            request.session['chat_messages'] = messages
+            logger.info(f"AI response appended. Total messages now: {len(messages)}")
+
+    # Always use frame template (no header/footer/nav)
+    return render(request, 'frontend/chatbot_frame.html', {
+        'messages': messages,
+    })
+
+
+def gemini_test(request):
+    """Simple diagnostic view to verify Gemini availability and a sample response.
+
+    Returns JSON: { available: bool, sample: str }
+    """
+    sample = None
+    try:
+        sample = generate_ai_response('Say hello in one short sentence.')
+    except Exception as e:
+        logger.error(f"gemini_test exception: {e}")
+        sample = f"error: {e}"
+
+    return JsonResponse({
+        'available': gemini_available,
+        'sample': sample,
+    })
