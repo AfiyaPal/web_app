@@ -2,40 +2,26 @@ from django.http import JsonResponse
 from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
 from decouple import config
-import google.generativeai as genai
 import requests
 import logging
 
 logger = logging.getLogger(__name__)
 
-# Configure Gemini API and expose availability flag
-gemini_available = False
-try:
-    api_key = config('GEMINI_API_KEY', default=None)
-    if not api_key:
-        logger.warning("GEMINI_API_KEY not found in environment or .env file")
-        gemini_available = False
-    else:
-        genai.configure(api_key=api_key)
-        gemini_available = True
-        logger.info("Gemini API configured (key present)")
-except Exception as e:
-    gemini_available = False
-    logger.error(f"Failed to configure Gemini API: {e}")
-
-
 def generate_ai_response(user_msg: str) -> str:
     """Return AI response or a helpful error message.
-
     This centralises Gemini usage so both views can call it and receive
     consistent, user-friendly error text when the key is missing or the
     API call fails.
     """
-    # Quick guard for missing key
-    if not gemini_available:
-        return "AI unavailable: GEMINI_API_KEY is not configured on the server."
-
     try:
+        import google.generativeai as genai
+        api_key = config('GEMINI_API_KEY', default=None)
+        if not api_key:
+            logger.warning("GEMINI_API_KEY not found in environment or .env file")
+            return "AI unavailable: GEMINI_API_KEY is not configured on the server."
+        
+        genai.configure(api_key=api_key)
+
         model = genai.GenerativeModel('gemini-1.5-flash')
         system_prompt = ("You are Afiyapal, a compassionate AI health assistant for underserved "
                          "communities in Mombasa, Kenya. Focus on mental health, myth-busting, "
@@ -43,6 +29,9 @@ def generate_ai_response(user_msg: str) -> str:
         user_prompt = f"User: {user_msg}\n\nProvide a helpful, evidence-based response using your specialties above."
         result = model.generate_content(system_prompt + "\n\n" + user_prompt)
         return result.text.strip()
+    except ImportError:
+        logger.error("Gemini API library not available.")
+        return "AI unavailable: The necessary libraries are not installed on the server."
     except Exception as e:
         logger.error(f"Gemini API error: {e}")
         return "Sorry, I'm having trouble connecting right now. Please try again or consult a healthcare professional if it's urgent."
@@ -97,9 +86,6 @@ def chatbot(request):
         'messages': messages,
     })
 
-    """Health news page."""
-    return render(request, "frontend/health_news.html")
-
 
 @xframe_options_exempt
 def chatbot_frame(request):
@@ -140,17 +126,22 @@ def chatbot_frame(request):
 
 def gemini_test(request):
     """Simple diagnostic view to verify Gemini availability and a sample response.
-
     Returns JSON: { available: bool, sample: str }
     """
     sample = None
+    available = False
     try:
         sample = generate_ai_response('Say hello in one short sentence.')
+        is_unavailable = "AI unavailable" in sample
+        is_error = "Sorry, I'm having trouble" in sample
+        available = not (is_unavailable or is_error)
+
     except Exception as e:
         logger.error(f"gemini_test exception: {e}")
         sample = f"error: {e}"
+        available = False
 
     return JsonResponse({
-        'available': gemini_available,
+        'available': available,
         'sample': sample,
     })
