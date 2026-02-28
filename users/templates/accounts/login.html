@@ -1,48 +1,160 @@
-{% extends "base.html" %}
+{% extends "base.html" %} {% load static %}
 
-<!-- Page Title -->
+<!-- Title -->
+{% block title %} | Login{% endblock %}
 
-{% block title %}Login{% endblock %}
+<!-- Extra -->
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/auth.css' %}" />
+{% endblock %} {% block content %}
 
-<!-- Page Content -->
+<div
+  class="container d-flex align-items-center justify-content-center min-vh-100"
+>
+  <div class="col-md-5 col-lg-4">
+    <div class="card login-card p-4">
+      <!-- Logo -->
+      <div class="text-center mb-3">
+        <div class="brand-logo">A</div>
 
-{% block content %}
-<div class="row justify-content-center">
-  <div class="col-md-6">
-    <div class="card">
-      <div class="card-header">
-        <h3 class="mb-0">Login</h3>
+        <h3 class="fw-bold title-text">Welcome Back</h3>
+
+        <p class="text-muted mb-4">Sign in to continue</p>
       </div>
 
-      {% include '../partials/_messages.html' %}
+      {% include "partials/_messages.html" %}
 
-      <div class="card-body">
-        <form method="POST">
-          {% csrf_token %}
+      <!-- Login Form -->
+      <form method="POST" id="loginForm" novalidate>
+        {% csrf_token %}
 
-          <div class="form-group">
-            {{ form.username.label_tag }} {{ form.username }}
-            <small class="form-text text-muted">Enter your username</small>
-          </div>
+        <!-- Username -->
+        <div class="form-floating mb-3">
+          <input
+            type="text"
+            name="username"
+            id="id_username"
+            class="form-control"
+            placeholder="Username or Email"
+            value="{{ request.POST.username }}"
+            required
+            autofocus
+          />
 
-          <div class="form-group">
-            {{ form.password.label_tag }} {{ form.password }}
-            <small class="form-text text-muted">
-              <a href="{% url 'users:password_reset' %}">Forgot password?</a>
-            </small>
-          </div>
-
-          <button type="submit" class="btn btn-primary btn-block">Login</button>
-        </form>
-
-        <div class="mt-3 text-center">
-          <p class="mb-0">
-            Don't have an account?
-            <a href="{% url 'users:register' %}">Register here</a>
-          </p>
+          <label for="id_username"> Username or Email </label>
         </div>
+
+        <!-- Password -->
+        <div class="form-floating mb-3 position-relative">
+          <input
+            type="password"
+            name="password"
+            id="id_password"
+            class="form-control"
+            placeholder="Password"
+            required
+          />
+
+          <label for="id_password"> Password </label>
+
+          <span
+            class="position-absolute top-50 end-0 translate-middle-y me-3 password-toggle"
+            onclick="togglePassword()"
+            title="Show / Hide Password"
+          >
+            <i class="bi bi-eye" id="eyeIcon"></i>
+          </span>
+        </div>
+
+        <!-- Remember -->
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <div class="form-check">
+            <input
+              class="form-check-input"
+              type="checkbox"
+              id="remember"
+              name="remember"
+              {%
+              if
+              request.POST.remember
+              %}checked{%
+              endif
+              %}
+            />
+
+            <label class="form-check-label" for="remember"> Remember me </label>
+          </div>
+
+          <a
+            href="{% url 'users:password_reset' %}"
+            class="text-decoration-none small"
+          >
+            Forgot password?
+          </a>
+        </div>
+
+        <!-- Submit Button -->
+        <button
+          type="submit"
+          class="btn btn-login text-white w-100 py-2 fw-semibold"
+          id="loginBtn"
+        >
+          <span id="btnText"> Sign In </span>
+
+          <span
+            class="spinner-border spinner-border-sm d-none"
+            id="spinner"
+          ></span>
+        </button>
+      </form>
+      <!-- End Form -->
+
+      <!-- Divider -->
+      <div class="divider mt-4">or</div>
+
+      <!-- Register -->
+      <div class="text-center mt-3">
+        <p class="mb-0">
+          New here?
+
+          <a
+            href="{% url 'users:register' %}"
+            class="fw-semibold text-decoration-none"
+          >
+            Create account
+          </a>
+        </p>
       </div>
     </div>
   </div>
 </div>
+
+<!-- Scripts -->
+<script>
+  // Password toggle
+  function togglePassword() {
+    const password = document.getElementById("id_password");
+    const icon = document.getElementById("eyeIcon");
+
+    if (password.type === "password") {
+      password.type = "text";
+      icon.classList.replace("bi-eye", "bi-eye-slash");
+    } else {
+      password.type = "password";
+      icon.classList.replace("bi-eye-slash", "bi-eye");
+    }
+  }
+
+  // Button loading state
+  document.getElementById("loginForm").addEventListener("submit", function () {
+    const btn = document.getElementById("loginBtn");
+
+    btn.disabled = true;
+
+    document.getElementById("btnText").classList.add("d-none");
+
+    document.getElementById("spinner").classList.remove("d-none");
+  });
+</script>
+
 {% endblock %}
