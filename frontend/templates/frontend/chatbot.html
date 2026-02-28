@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block title %}AI Health Chat{% endblock %}
+
+{% block content %}
+
+<div class="chat-container" style="max-width:360px;margin:20px auto;display:flex;flex-direction:column;height:80vh;border:1px solid #ccc;border-radius:8px;overflow:hidden;">
+    <div style="padding:6px 10px;background:#e0f2fe;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #ccc;">
+        <strong>AI Chat</strong>
+        <a href="?clear=1" style="font-size:0.8rem;color:#0369a1;text-decoration:none;">Clear</a>
+    </div>
+    <div id="chat-messages" style="flex:1;overflow-y:auto;padding:10px;background:#f9f9f9;">
+        {% for msg in messages %}
+            <div class="message {{ msg.sender }}" style="margin-bottom:8px;">
+                <span style="font-weight:600;">{% if msg.sender == 'user' %}You{% else %}Assistant{% endif %}:</span>
+                <span>{{ msg.text }}</span>
+            </div>
+        {% empty %}
+            <div style="color:#555;">Start the conversation by typing below.</div>
+        {% endfor %}
+    </div>
+    <form id="chat-form" method="post" style="display:flex;border-top:1px solid #ddd;">
+        {% csrf_token %}
+        <input type="text" name="message" placeholder="Type a message..." required autocomplete="off"
+               style="flex:1;padding:10px;border:none;outline:none;" />
+        <button type="submit" style="padding:0 16px;border:none;background:var(--health-teal);color:#fff;cursor:pointer;">Send</button>
+    </form>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// autoscroll when new messages appear
+const chatMessages = document.getElementById('chat-messages');
+if (chatMessages) {
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+// submit form when user presses Enter in the input field
+const inputField = document.querySelector('#chat-form input[name="message"]');
+if (inputField) {
+    inputField.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            document.getElementById('chat-form').submit();
+        }
+    });
+}
+</script>
+{% endblock %}

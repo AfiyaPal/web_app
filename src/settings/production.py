@@ -10,7 +10,7 @@ from .base_settings import *
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
 
-# ALLOWED_HOSTS = ['https://afiyapal.pythonanywhere.com/']
+ALLOWED_HOSTS = ['127.0.0.1','https://afiyapal.pythonanywhere.com/']
 
 
 # Database
