@@ -1,64 +1,99 @@
-from django.shortcuts import redirect
 from django.contrib import messages
-from django.contrib.auth import logout
-from django.views.generic.edit import CreateView
-from django.urls import reverse_lazy
+from django.contrib.auth import authenticate, login, logout, get_user_model
+from django.shortcuts import render, redirect
 from django.contrib.auth.views import (
-    LoginView, 
-    PasswordResetView, 
+    PasswordResetView,
     PasswordResetConfirmView,
     PasswordResetDoneView
 )
 from django.contrib.auth.forms import (
-    AuthenticationForm,
     PasswordResetForm,
     SetPasswordForm,
 )
-from users.forms import CustomUserCreationForm
 
 
-# ------------------- Register View -------------------
-class CustomRegisterView(CreateView):
-    form_class = CustomUserCreationForm
-    template_name = 'accounts/register.html'
-    success_url = reverse_lazy('users:login')
-    
-    def form_valid(self, form):
-        response = super().form_valid(form)
-        messages.success(
-            self.request,
-            "Your account has been created successfully! You can now log in."
+
+User = get_user_model()
+
+
+# ------------------- Register -------------------
+def register_view(request):
+
+    if request.method == "POST":
+
+        username = request.POST.get("username")
+        email = request.POST.get("email")
+        password1 = request.POST.get("password1")
+        password2 = request.POST.get("password2")
+
+        # Basic validation
+        if not all([username, email, password1, password2]):
+            messages.error(request, "All fields are required.")
+            return redirect("users:register")
+
+        if password1 != password2:
+            messages.error(request, "Passwords do not match.")
+            return redirect("users:register")
+
+        if User.objects.filter(username=username).exists():
+            messages.error(request, "Username already exists.")
+            return redirect("users:register")
+
+        if User.objects.filter(email=email).exists():
+            messages.error(request, "Email already exists.")
+            return redirect("users:register")
+
+        # Create user
+        user = User.objects.create_user(
+            username=username,
+            email=email,
+            password=password1
         )
-        return response
 
-    def form_invalid(self, form):
-        messages.error(
-            self.request,
-            "There was an error with your registration. Please check the form and try again."
+        messages.success(request, "Account created successfully!")
+        return redirect("users:login")
+
+    return render(request, "accounts/register.html")
+
+# ------------------- Login -------------------
+def login_view(request):
+
+    if request.user.is_authenticated:
+        return redirect("frontend:index")
+
+    if request.method == "POST":
+
+        username = request.POST.get("username")
+        password = request.POST.get("password")
+        remember = request.POST.get("remember")
+
+        if not username or not password:
+            messages.error(request, "Please fill all fields.")
+            return redirect("users:login")
+
+        user = authenticate(
+            request,
+            username=username,
+            password=password
         )
-        return super().form_invalid(form)
 
+        if user:
 
-# ------------------- Login View -------------------
-class CustomLoginView(LoginView):
-    template_name = 'accounts/login.html'
-    form_class = AuthenticationForm
-    redirect_authenticated_user = True
+            login(request, user)
 
-    def form_valid(self, form):
-        messages.success(
-            self.request,
-            "Welcome back! You have successfully logged in."
-        )
-        return super().form_valid(form)
+            # Remember me
+            if not remember:
+                request.session.set_expiry(0)  # Browser close = logout
+            else:
+                request.session.set_expiry(1209600)  # 2 weeks
 
-    def form_invalid(self, form):
-        messages.error(
-            self.request,
-            "Invalid username or password. Please try again."
-        )
-        return super().form_invalid(form)
+            messages.success(request, "Welcome back!")
 
+            return redirect("frontend:index")
+
+        messages.error(request, "Invalid credentials.")
+
+    return render(request, "accounts/login.html")
 
 # ------------------- Logout View -------------------
 def user_logout(request):

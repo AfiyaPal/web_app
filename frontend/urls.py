@@ -11,6 +11,8 @@ app_name = "frontend"
 urlpatterns = [
     path("", views.home, name="index"),
     path("chatbot/", views.chatbot, name="chatbot"),
+    path("chatbot-frame/", views.chatbot_frame, name="chatbot_frame"),
+    path("gemini-test/", views.gemini_test, name="gemini_test"),
 
     # Password Reset Functionality
     path("password-reset-done/", CustomPasswordResetDoneView.as_view(), name="password_reset_done"),

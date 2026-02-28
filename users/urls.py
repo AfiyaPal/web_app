@@ -4,18 +4,18 @@ Routing for users app
 
 from django.urls import path
 from .views.authentication import (
-    CustomRegisterView,
-    CustomLoginView,
+    register_view,
+    login_view,
     CustomPasswordResetView,
     CustomPasswordResetConfirmView,
-    user_logout
+    user_logout,
 )
 
 app_name = 'users'
 
 urlpatterns = [
-    path('register/', CustomRegisterView.as_view(), name='register'),
-    path('login/', CustomLoginView.as_view(), name='login'),
+    path('register/', register_view, name='register'),
+    path('login/', login_view, name='login'),
     path('logout/', user_logout, name='logout'),
     path('password-reset/', CustomPasswordResetView.as_view(), name='password_reset'),
     path(

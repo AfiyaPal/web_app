@@ -123,9 +123,5 @@ AUTHENTICATION_BACKENDS = [
 ]
 
 LOGIN_URL = 'users:login'
-LOGIN_REDIRECT_URL = 'frontend:home'
+LOGIN_REDIRECT_URL = 'frontend:index'
 LOGOUT_REDIRECT_URL = 'users:login'
-
-DEBUG = True # Keep False for production
-ALLOWED_HOSTS = ['afiyapal.pythonanywhere.com', '127.0.0.1', 'localhost']
-SECRET_KEY = os.environ.get('SECRET_KEY', 'AIzaSyBSDobDoFGijBDhQ2vu7QR3Q6thy50QtIE')
