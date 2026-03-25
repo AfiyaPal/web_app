@@ -9,6 +9,7 @@ venv/
 # Database Variables
 db.sqlite3
 migrations/
+Database.session.sql
 
 # Etc
 .vscode
