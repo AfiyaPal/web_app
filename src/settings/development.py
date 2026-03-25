@@ -17,10 +17,15 @@ ALLOWED_HOSTS = ['127.0.0.1', 'https://afiyapal.pythonanywhere.com/']
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
+#changed the initial configuration to use mysql for the database
 DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+    'default': {
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'Afiyapal_blogs',
+        'USER': 'root',          # Using root for local dev is fine for now
+        'PASSWORD': 'pass@sql', 
+        'HOST': 'localhost',
+        'PORT': '3306',
     }
 }
 
