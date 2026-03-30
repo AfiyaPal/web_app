@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AfiyaPal — Your Health Companion</title>
+    <meta name="description" content="AfiyaPal health web app login" />
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+    <!-- Background blobs -->
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+    <div class="blob blob-3"></div>
+
+    <!-- Floating icons -->
+    <div class="floating-icons">
+        <div class="floating-icon">💚</div>
+        <div class="floating-icon">🩺</div>
+        <div class="floating-icon">🛡️</div>
+        <div class="floating-icon">🌿</div>
+        <div class="floating-icon">✨</div>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast" id="toast">✓ Welcome to AfiyaPal!</div>
+
+    <!-- Main -->
+    <div class="login-wrapper">
+        <!-- Logo -->
+        <div class="logo-area">
+            <div class="logo-icon" id="logoIcon">
+                <svg viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+            </div>
+            <div class="app-name">Afiya<span>Pal</span></div>
+            <div class="app-tagline" id="tagline">Welcome back to wellness</div>
+        </div>
+
+        <!-- Card -->
+        <div class="login-card">
+            <!-- Tabs -->
+            <div class="tabs">
+                <button class="tab-btn active" id="tabSignIn" onclick="switchTab('signin')">Sign In</button>
+                <button class="tab-btn" id="tabSignUp" onclick="switchTab('signup')">Sign Up</button>
+            </div>
+
+            <!-- Form -->
+            <form class="form-body" id="loginForm" onsubmit="handleSubmit(event)">
+                <!-- Name (signup only) -->
+                <div class="input-group" id="nameGroup">
+                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                    <input type="text" id="nameInput" placeholder="Full Name" autocomplete="name">
+                </div>
+
+                <!-- Email -->
+                <div class="input-group visible" id="emailGroup">
+                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+                    <input type="email" id="emailInput" placeholder="Email Address" required autocomplete="email">
+                </div>
+
+                <!-- Password -->
+                <div class="input-group visible" id="passwordGroup">
+                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                    <input type="password" id="passwordInput" placeholder="Password" required autocomplete="current-password">
+                    <button type="button" class="toggle-pw" id="togglePw" onclick="togglePassword()">
+                        <svg id="eyeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                    </button>
+                </div>
+
+                <!-- Password strength -->
+                <div class="pw-strength" id="pwStrength">
+                    <div class="pw-bar" id="bar1"></div>
+                    <div class="pw-bar" id="bar2"></div>
+                    <div class="pw-bar" id="bar3"></div>
+                    <div class="pw-bar" id="bar4"></div>
+                    <div class="pw-bar" id="bar5"></div>
+                </div>
+                <div class="pw-strength-label" id="pwLabel"></div>
+
+                <!-- Forgot -->
+                <div class="forgot-row" id="forgotRow">
+                    <a href="#" class="forgot-link" onclick="event.preventDefault()">Forgot password?</a>
+                </div>
+
+                <!-- Submit -->
+                <button type="submit" class="submit-btn" id="submitBtn">
+                    <span class="btn-text">
+                        <span class="btn-label" id="btnLabel">Sign In</span>
+                        <svg class="arrow-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                        <span class="spinner"></span>
+                    </span>
+                </button>
+
+                <!-- Divider -->
+                <div class="divider"><span>or continue with</span></div>
+
+                <!-- Social -->
+                <div class="social-row">
+                    <button type="button" class="social-btn" onclick="socialLogin('Google')">
+                        <svg viewBox="0 0 24 24"><path fill="#EA4335" d="M5.27 9.76A7.18 7.18 0 0 1 12 4.85c1.76 0 3.34.62 4.59 1.8l3.44-3.44A11.96 11.96 0 0 0 12 0 12 12 0 0 0 .55 6.96l4.72 2.8z"/><path fill="#34A853" d="M16.04 18.01A7.4 7.4 0 0 1 12 19.15a7.18 7.18 0 0 1-6.73-4.91l-4.72 2.8A12 12 0 0 0 12 24c3.06 0 5.7-1.04 7.6-2.85l-3.56-3.14z"/><path fill="#4A90D9" d="M19.6 21.15C21.65 19.35 23 16.58 23 12.82c0-.82-.1-1.65-.28-2.42H12v4.64h6.19a5.4 5.4 0 0 1-2.15 3.43l3.56 3.14v-.46z"/><path fill="#FBBC05" d="M5.27 14.24A7.3 7.3 0 0 1 4.85 12c0-.78.15-1.54.42-2.24L.55 6.96A12.04 12.04 0 0 0 0 12c0 1.94.46 3.78 1.28 5.4l3.99-3.16z"/></svg>
+                        <span>Google</span>
+                    </button>
+                    <button type="button" class="social-btn" onclick="socialLogin('Instagram')">
+                        <svg viewBox="0 0 24 24"><defs><radialGradient id="ig" cx="30%" cy="107%" r="150%"><stop offset="0%" stop-color="#fdf497"/><stop offset="5%" stop-color="#fdf497"/><stop offset="45%" stop-color="#fd5949"/><stop offset="60%" stop-color="#d6249f"/><stop offset="90%" stop-color="#285AEB"/></radialGradient></defs><rect width="20" height="20" x="2" y="2" rx="5" fill="url(#ig)"/><circle cx="12" cy="12" r="4.5" fill="none" stroke="#fff" stroke-width="1.5"/><circle cx="17.5" cy="6.5" r="1.2" fill="#fff"/></svg>
+                        <span>Instagram</span>
+                    </button>
+                    <!-- <button type="button" class="social-btn" onclick="socialLogin('Facebook')">
+                        <svg viewBox="0 0 24 24"><path fill="#1877F2" d="M24 12c0-6.627-5.373-12-12-12S0 5.373 0 12c0 5.99 4.388 10.954 10.125 11.854V15.47H7.078V12h3.047V9.356c0-3.007 1.792-4.668 4.533-4.668 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.875V12h3.328l-.532 3.469h-2.796v8.385C19.612 22.954 24 17.99 24 12"/></svg>
+                        <span>Facebook</span>
+                    </button> -->
+                </div>
+            </form>
+        </div>
+
+        <!-- Footer -->
+        <p class="footer-text">
+            By continuing, you agree to our <a href="#">Terms</a> &amp; <a href="#">Privacy Policy</a>
+        </p>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
